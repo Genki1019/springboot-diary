@@ -49,12 +49,22 @@ public class DiaryService {
     }
 
     /**
-     * 日記を全件取得する
+     * 日記を全件取得
      *
      * @return 日記エンティティ
      */
     public List<DiaryEntity> getAllDiaries() {
         return diaryRepository.findAll();
+    }
+
+    /**
+     * タイトルが入力に一致した日記を取得
+     *
+     * @param title 日記タイトル
+     * @return 日記エンティティリスト
+     */
+    public List<DiaryEntity> getDiaries(String title) {
+        return diaryRepository.findByTitleContaining(title);
     }
 
     /**

@@ -1,9 +1,10 @@
 package com.genki.rest_api.diary.controller;
 
 import com.genki.rest_api.diary.dto.DiaryResponseDto;
-import com.genki.rest_api.diary.entity.DiaryEntity;
+import com.genki.rest_api.diary.form.DairySearchForm;
 import com.genki.rest_api.diary.form.DiaryRegistrationForm;
 import com.genki.rest_api.diary.service.DiaryService;
+import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
@@ -39,13 +40,18 @@ public class DiaryController {
     }
 
     /**
-     * 日記取得API（全件）
+     * 日記取得API（複数件）
      *
      * @return 検索した日記
      */
     @GetMapping("/")
-    public List<DiaryEntity> getDiaries() {
-        return diaryService.getAllDiaries();
+    public List<DiaryResponseDto> getDiaries(@Validated DairySearchForm diarySearchForm) {
+        if (StringUtils.isNotBlank(diarySearchForm.title())) {
+            return diaryService.convertToDiaryResponseDtoList(
+                    diaryService.getDiaries(diarySearchForm.title())
+            );
+        }
+        return diaryService.convertToDiaryResponseDtoList(diaryService.getAllDiaries());
     }
 
     /**
