@@ -7,6 +7,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
+/**
+ * 日記エンティティ
+ */
 @Data
 @Entity
 @Table(name = "diary")
