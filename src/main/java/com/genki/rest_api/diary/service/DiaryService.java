@@ -2,13 +2,15 @@ package com.genki.rest_api.diary.service;
 
 import com.genki.rest_api.diary.dto.DiaryResponseDto;
 import com.genki.rest_api.diary.entity.DiaryEntity;
+import com.genki.rest_api.diary.form.DiaryUpdateForm;
 import com.genki.rest_api.diary.repository.DiaryRepository;
+import io.micrometer.common.util.StringUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * 日記サービス
@@ -82,16 +84,40 @@ public class DiaryService {
     }
 
     /**
-     * 日記を1件取得する
+     * 日記を1件取得
      *
      * @param id ID
      * @return 日記エンティティ
      */
     public DiaryEntity getDiaryById(long id) {
-        Optional<DiaryEntity> diaryEntityOpt = diaryRepository.findById(id);
-        if (diaryEntityOpt.isEmpty()) {
-            throw new RuntimeException();
+        return diaryRepository.findById(id)
+                .orElseThrow(RuntimeException::new);
+    }
+
+    /**
+     * 日記を更新
+     *
+     * @param id              ID
+     * @param diaryUpdateForm 日記更新フォーム
+     * @return 日記エンティティ
+     */
+    public DiaryEntity updateDiary(long id, DiaryUpdateForm diaryUpdateForm) {
+        DiaryEntity diaryEntity = getDiaryById(id);
+
+        updateIfNotBlank(diaryUpdateForm.title(), diaryEntity::setTitle);
+        updateIfNotBlank(diaryUpdateForm.content(), diaryEntity::setContent);
+        return diaryRepository.save(diaryEntity);
+    }
+
+    /**
+     * 値が空でない場合に更新処理を実行
+     *
+     * @param value   更新する値
+     * @param updater 更新処理
+     */
+    private void updateIfNotBlank(String value, Consumer<String> updater) {
+        if (StringUtils.isNotBlank(value)) {
+            updater.accept(value);
         }
-        return diaryEntityOpt.get();
     }
 }
