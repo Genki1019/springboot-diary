@@ -77,4 +77,14 @@ public class DiaryController {
     public DiaryResponseDto updateDiary(@PathVariable("id") long id, DiaryUpdateForm diaryUpdateForm) {
         return diaryService.convertToDiaryResponseDto(diaryService.updateDiary(id, diaryUpdateForm));
     }
+
+    /**
+     * 日記削除API
+     *
+     * @param id IDg
+     */
+    @DeleteMapping("/{id}")
+    public void deleteDiary(@PathVariable("id") long id) {
+        diaryService.deleteDiary(id);
+    }
 }

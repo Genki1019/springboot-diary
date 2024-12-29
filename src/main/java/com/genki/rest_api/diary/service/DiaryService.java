@@ -120,4 +120,13 @@ public class DiaryService {
             updater.accept(value);
         }
     }
+
+    /**
+     * 日記を削除
+     *
+     * @param id ID
+     */
+    public void deleteDiary(long id) {
+        diaryRepository.deleteById(id);
+    }
 }
