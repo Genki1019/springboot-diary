@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 日記サービス
@@ -68,5 +69,19 @@ public class DiaryService {
         diaryEntity.setTitle(title);
         diaryEntity.setContent(content);
         return diaryRepository.save(diaryEntity);
+    }
+
+    /**
+     * 日記を1件取得する
+     *
+     * @param id ID
+     * @return 日記エンティティ
+     */
+    public DiaryEntity getDiaryById(long id) {
+        Optional<DiaryEntity> diaryEntityOpt = diaryRepository.findById(id);
+        if (diaryEntityOpt.isEmpty()) {
+            throw new RuntimeException();
+        }
+        return diaryEntityOpt.get();
     }
 }
