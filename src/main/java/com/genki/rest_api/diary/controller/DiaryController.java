@@ -81,9 +81,10 @@ public class DiaryController {
     /**
      * 日記削除API
      *
-     * @param id IDg
+     * @param id ID
      */
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteDiary(@PathVariable("id") long id) {
         diaryService.deleteDiary(id);
     }
