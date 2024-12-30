@@ -10,11 +10,11 @@ import jakarta.validation.constraints.Size;
  * @param content 日記本文
  */
 public record DiaryRegistrationForm(
-        @NotBlank
-        @Size(max = 50)
+        @NotBlank(message = "{errors.api.diary.register.title.required}")
+        @Size(max = 100, message = "{errors.api.diary.register.title.max.length}")
         String title,
 
-        @NotBlank
-        @Size(max = 500)
+        @NotBlank(message = "{errors.api.diary.register.content.required}")
+        @Size(max = 1000, message = "{errors.api.diary.register.content.max.length}")
         String content) {
 }

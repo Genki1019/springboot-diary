@@ -1,14 +1,11 @@
 package com.genki.rest_api.diary.form;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record DiaryUpdateForm(
-        @NotBlank
-        @Size(max = 50)
+        @Size(max = 100, message = "{errors.api.diary.register.title.max.length}")
         String title,
 
-        @NotBlank
-        @Size(max = 500)
+        @Size(max = 1000, message = "{errors.api.diary.register.content.max.length}")
         String content) {
 }

@@ -74,7 +74,7 @@ public class DiaryController {
      * @return 日記レスポンスDTO
      */
     @PutMapping("/{id}")
-    public DiaryResponseDto updateDiary(@PathVariable("id") long id, DiaryUpdateForm diaryUpdateForm) {
+    public DiaryResponseDto updateDiary(@PathVariable("id") long id, @Validated DiaryUpdateForm diaryUpdateForm) {
         return diaryService.convertToDiaryResponseDto(diaryService.updateDiary(id, diaryUpdateForm));
     }
 

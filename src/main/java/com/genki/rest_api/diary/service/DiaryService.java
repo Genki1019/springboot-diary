@@ -2,14 +2,17 @@ package com.genki.rest_api.diary.service;
 
 import com.genki.rest_api.diary.dto.DiaryResponseDto;
 import com.genki.rest_api.diary.entity.DiaryEntity;
+import com.genki.rest_api.diary.exception.DiaryNotFoundException;
 import com.genki.rest_api.diary.form.DiaryUpdateForm;
 import com.genki.rest_api.diary.repository.DiaryRepository;
 import io.micrometer.common.util.StringUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 /**
@@ -20,6 +23,8 @@ import java.util.function.Consumer;
 @RequiredArgsConstructor
 public class DiaryService {
     private final DiaryRepository diaryRepository;
+
+    private final MessageSource messageSource;
 
     /**
      * 日記DTOを生成
@@ -91,7 +96,13 @@ public class DiaryService {
      */
     public DiaryEntity getDiaryById(long id) {
         return diaryRepository.findById(id)
-                .orElseThrow(RuntimeException::new);
+                .orElseThrow(() -> new DiaryNotFoundException(
+                        messageSource.getMessage(
+                                "errors.api.diary.search.id.not.found",
+                                new Object[]{id},
+                                Locale.getDefault()
+                        )
+                ));
     }
 
     /**

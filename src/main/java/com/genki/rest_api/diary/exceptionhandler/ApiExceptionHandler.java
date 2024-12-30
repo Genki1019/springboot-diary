@@ -2,12 +2,14 @@ package com.genki.rest_api.diary.exceptionhandler;
 
 import com.genki.rest_api.diary.dto.ApiDetailErrorResponseDto;
 import com.genki.rest_api.diary.dto.ApiErrorResponseDto;
+import com.genki.rest_api.diary.exception.DiaryNotFoundException;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.ConversionNotSupportedException;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -21,6 +23,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.ServletRequestBindingException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
@@ -225,5 +229,18 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleHttpMessageNotWritable(HttpMessageNotWritableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(ex.getMessage());
         return createErrorResponse(ex, apiErrorResponseDto, headers, status, request);
+    }
+
+    /**
+     * 日記が見つからない例外エラーハンドラ
+     *
+     * @param ex 例外エラー
+     * @return APIエラーレスポンスDTO
+     */
+    @ExceptionHandler(DiaryNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiErrorResponseDto handleDiaryNotFoundException(DiaryNotFoundException ex) {
+        log.warn(ex.getMessage(), ex);
+        return new ApiErrorResponseDto(ex.getMessage());
     }
 }
