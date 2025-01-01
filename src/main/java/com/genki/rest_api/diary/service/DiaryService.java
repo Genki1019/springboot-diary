@@ -2,17 +2,25 @@ package com.genki.rest_api.diary.service;
 
 import com.genki.rest_api.diary.dto.DiaryResponseDto;
 import com.genki.rest_api.diary.entity.DiaryEntity;
+import com.genki.rest_api.diary.exception.DiaryIOException;
+import com.genki.rest_api.diary.exception.DiaryImageNotSupportedException;
 import com.genki.rest_api.diary.exception.DiaryNotFoundException;
 import com.genki.rest_api.diary.form.DiaryUpdateForm;
 import com.genki.rest_api.diary.repository.DiaryRepository;
 import io.micrometer.common.util.StringUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.io.FilenameUtils;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
@@ -23,8 +31,10 @@ import java.util.function.Consumer;
 @RequiredArgsConstructor
 public class DiaryService {
     private final DiaryRepository diaryRepository;
-
     private final MessageSource messageSource;
+
+    private final String IMAGE_DIR_PATH = "images";
+    private final List<String> EXTENSION_LIST = List.of("png", "jpg", "jpeg", "gif");
 
     /**
      * 日記DTOを生成
@@ -81,11 +91,16 @@ public class DiaryService {
      * @param content 内容
      * @return 日記エンティティ
      */
-    public DiaryEntity registerDiary(String title, String content) {
+    public DiaryEntity registerDiary(String title, String content, MultipartFile multipartFile) {
         DiaryEntity diaryEntity = new DiaryEntity();
         diaryEntity.setTitle(title);
         diaryEntity.setContent(content);
-        return diaryRepository.save(diaryEntity);
+        diaryRepository.save(diaryEntity);
+
+        if (!multipartFile.isEmpty()) {
+            saveDiaryImage(diaryEntity, multipartFile);
+        }
+        return diaryEntity;
     }
 
     /**
@@ -112,11 +127,15 @@ public class DiaryService {
      * @param diaryUpdateForm 日記更新フォーム
      * @return 日記エンティティ
      */
-    public DiaryEntity updateDiary(long id, DiaryUpdateForm diaryUpdateForm) {
+    public DiaryEntity updateDiary(long id, DiaryUpdateForm diaryUpdateForm, MultipartFile multipartFile) {
         DiaryEntity diaryEntity = getDiaryById(id);
 
         updateIfNotBlank(diaryUpdateForm.title(), diaryEntity::setTitle);
         updateIfNotBlank(diaryUpdateForm.content(), diaryEntity::setContent);
+
+        if (!multipartFile.isEmpty()) {
+            saveDiaryImage(diaryEntity, multipartFile);
+        }
         return diaryRepository.save(diaryEntity);
     }
 
@@ -139,5 +158,141 @@ public class DiaryService {
      */
     public void deleteDiary(long id) {
         diaryRepository.deleteById(id);
+    }
+
+    /**
+     * ディレクトリを作成
+     *
+     * @param path ファイルパス
+     */
+    public void createDirectories(Path path) {
+        try {
+            Files.createDirectories(path);
+        } catch (IOException e) {
+            throw new DiaryIOException(
+                    messageSource.getMessage(
+                            "errors.api.diary.image.file.is.blank",
+                            null,
+                            Locale.getDefault()
+                    ), e);
+        }
+    }
+
+    /**
+     * 画像ディレクトリのパスを取得
+     *
+     * @return ディレクトリパス
+     */
+    private Path getDiaryImageDirPath() {
+        return Path.of(IMAGE_DIR_PATH);
+    }
+
+    /**
+     * 日記IDごとの画像ディレクトリのパスを取得
+     *
+     * @param id ID
+     * @return ディレクトリパス
+     */
+    private Path getDiaryImageIdDirPath(long id) {
+        return Path.of(IMAGE_DIR_PATH, String.valueOf(id));
+    }
+
+    /**
+     * 日記画像のファイルパスを呪録
+     *
+     * @param id       ID
+     * @param fileName 画像ファイル名
+     * @return 画像ファイルパス
+     */
+    private Path getDiaryImageFilePath(long id, String fileName) {
+        return Path.of(IMAGE_DIR_PATH, String.valueOf(id), fileName);
+    }
+
+    /**
+     * 登録する画像ファイル名を取得
+     *
+     * @param multipartFile 画像ファイル
+     * @return 画像ファイル名
+     */
+    private String createDiaryImageFileName(MultipartFile multipartFile) {
+        String originalDiaryImageFileName = multipartFile.getOriginalFilename();
+        String extension = FilenameUtils.getExtension(originalDiaryImageFileName);
+        return UUID.randomUUID() + "." + extension;
+    }
+
+    /**
+     * 新しい画像を保存
+     *
+     * @param path          画像パス
+     * @param multipartFile 画像ファイル
+     */
+    private void restoreDiaryImage(Path path, MultipartFile multipartFile) {
+        try {
+            multipartFile.transferTo(path);
+        } catch (IOException e) {
+            throw new DiaryIOException(
+                    messageSource.getMessage(
+                            "errors.api.diary.image.file.is.blank",
+                            null,
+                            Locale.getDefault()
+                    ),
+                    e);
+        }
+    }
+
+    /**
+     * 日記画像を保存
+     *
+     * @param diaryEntity   日記エンティティ
+     * @param multipartFile 画像ファイル
+     */
+    private void saveDiaryImage(DiaryEntity diaryEntity, MultipartFile multipartFile) {
+        if (!isDiaryImageExtensionSupported(multipartFile)) {
+            throw new DiaryImageNotSupportedException(
+                    messageSource.getMessage(
+                            "errors.api.diary.image.extension.not.supported",
+                            new Object[]{EXTENSION_LIST},
+                            Locale.getDefault()
+                    )
+            );
+        }
+        createDirectories(getDiaryImageDirPath());
+        long diaryId = diaryEntity.getId();
+        createDirectories(getDiaryImageIdDirPath(diaryId));
+        String diaryImageFileName = createDiaryImageFileName(multipartFile);
+        Path diaryImageFilePath = getDiaryImageFilePath(diaryId, diaryImageFileName);
+        restoreDiaryImage(diaryImageFilePath, multipartFile);
+
+        if (StringUtils.isNotBlank(diaryEntity.getImagePath())) {
+            Path oldDiaryImageFilePath = getDiaryImageFilePath(diaryId, diaryEntity.getImagePath());
+            try {
+                Files.deleteIfExists(oldDiaryImageFilePath);
+            } catch (IOException e) {
+                throw new DiaryIOException(
+                        messageSource.getMessage(
+                                "errors.api.diary.image.file.is.blank",
+                                null,
+                                Locale.getDefault()
+                        ),
+                        e);
+            }
+        }
+        diaryEntity.setImagePath(diaryImageFileName);
+        diaryRepository.save(diaryEntity);
+    }
+
+    /**
+     * 画像の拡張子がサポートされているか
+     *
+     * @param multipartFile 画像ファイル
+     * @return true=サポートされている, false=サポートされていない
+     */
+    private boolean isDiaryImageExtensionSupported(MultipartFile multipartFile) {
+        String originalImageFileName = multipartFile.getOriginalFilename();
+        if (StringUtils.isBlank(originalImageFileName)) {
+            return false;
+        }
+        String extension = FilenameUtils.getExtension(originalImageFileName).toLowerCase();
+        return EXTENSION_LIST.contains(extension);
     }
 }

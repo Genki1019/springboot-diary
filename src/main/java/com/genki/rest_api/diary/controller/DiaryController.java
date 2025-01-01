@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -31,11 +32,14 @@ public class DiaryController {
      */
     @PostMapping("/")
     @ResponseStatus(HttpStatus.CREATED)
-    public DiaryResponseDto registerDiary(@Validated DiaryRegistrationForm diaryRegistrationForm) {
+    public DiaryResponseDto registerDiary(
+            @Validated DiaryRegistrationForm diaryRegistrationForm,
+            @RequestParam("diaryImage") MultipartFile multipartFile) {
         return diaryService.convertToDiaryResponseDto(
                 diaryService.registerDiary(
                         diaryRegistrationForm.title(),
-                        diaryRegistrationForm.content()
+                        diaryRegistrationForm.content(),
+                        multipartFile
                 )
         );
     }
@@ -74,8 +78,13 @@ public class DiaryController {
      * @return 日記レスポンスDTO
      */
     @PutMapping("/{id}")
-    public DiaryResponseDto updateDiary(@PathVariable("id") long id, @Validated DiaryUpdateForm diaryUpdateForm) {
-        return diaryService.convertToDiaryResponseDto(diaryService.updateDiary(id, diaryUpdateForm));
+    public DiaryResponseDto updateDiary(
+            @PathVariable("id") long id,
+            @Validated DiaryUpdateForm diaryUpdateForm,
+            @RequestParam("diaryImage") MultipartFile multipartFile) {
+        return diaryService.convertToDiaryResponseDto(
+                diaryService.updateDiary(id, diaryUpdateForm, multipartFile)
+        );
     }
 
     /**

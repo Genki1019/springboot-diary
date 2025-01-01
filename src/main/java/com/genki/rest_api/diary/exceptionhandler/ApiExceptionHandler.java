@@ -2,12 +2,15 @@ package com.genki.rest_api.diary.exceptionhandler;
 
 import com.genki.rest_api.diary.dto.ApiDetailErrorResponseDto;
 import com.genki.rest_api.diary.dto.ApiErrorResponseDto;
+import com.genki.rest_api.diary.exception.DiaryIOException;
+import com.genki.rest_api.diary.exception.DiaryImageNotSupportedException;
 import com.genki.rest_api.diary.exception.DiaryNotFoundException;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.ConversionNotSupportedException;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.context.MessageSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -28,16 +31,19 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import java.util.Locale;
 import java.util.Optional;
 
 @RestControllerAdvice
 @RequiredArgsConstructor
 @Slf4j
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
+    private final MessageSource messageSource;
 
     /**
      * 独自エラーレスポンス
@@ -150,7 +156,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                 .ifPresent(fieldError -> apiDetailErrorResponseDto.setTitle(fieldError.getDefaultMessage()));
         Optional.ofNullable(bindingResult.getFieldError("content"))
                 .ifPresent(fieldError -> apiDetailErrorResponseDto.setContent(fieldError.getDefaultMessage()));
-        String errorMessage = "error message"; // TODO: メッセージ
+        String errorMessage = messageSource.getMessage(
+                "errors.general",
+                null,
+                Locale.getDefault()
+        );
         ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(errorMessage, apiDetailErrorResponseDto);
         return createErrorResponse(ex, apiErrorResponseDto, headers, status, request);
     }
@@ -185,6 +195,23 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleErrorResponseException(
             ErrorResponseException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(ex.getMessage());
+        return createErrorResponse(ex, apiErrorResponseDto, headers, status, request);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @SuppressWarnings("NullableProblems")
+    protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(
+                messageSource.getMessage(
+                        "errors.api.diary.image.file.size",
+                        null,
+                        Locale.getDefault()
+                )
+        );
         return createErrorResponse(ex, apiErrorResponseDto, headers, status, request);
     }
 
@@ -241,6 +268,32 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ApiErrorResponseDto handleDiaryNotFoundException(DiaryNotFoundException ex) {
         log.warn(ex.getMessage(), ex);
+        return new ApiErrorResponseDto(ex.getMessage());
+    }
+
+    /**
+     * 日記画像の形式例外エラーハンドラ
+     *
+     * @param ex 例外エラー
+     * @return APIエラーレスポンスDTO
+     */
+    @ExceptionHandler(DiaryImageNotSupportedException.class)
+    @ResponseStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+    public ApiErrorResponseDto handleDiaryImageNotSupportedException(DiaryImageNotSupportedException ex) {
+        log.warn(ex.getMessage(), ex);
+        return new ApiErrorResponseDto(ex.getMessage());
+    }
+
+    /**
+     * 日記IO系例外エラーハンドラ
+     *
+     * @param ex 例外エラー
+     * @return APIエラーレスポンスDTO
+     */
+    @ExceptionHandler(DiaryIOException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ApiErrorResponseDto handleDiaryIOException(DiaryIOException ex) {
+        log.error(ex.getMessage(), ex);
         return new ApiErrorResponseDto(ex.getMessage());
     }
 }
