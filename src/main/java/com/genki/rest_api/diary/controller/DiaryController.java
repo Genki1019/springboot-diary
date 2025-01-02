@@ -35,13 +35,7 @@ public class DiaryController {
     public DiaryResponseDto registerDiary(
             @Validated DiaryRegistrationForm diaryRegistrationForm,
             @RequestParam("diaryImage") MultipartFile multipartFile) {
-        return diaryService.convertToDiaryResponseDto(
-                diaryService.registerDiary(
-                        diaryRegistrationForm.title(),
-                        diaryRegistrationForm.content(),
-                        multipartFile
-                )
-        );
+        return diaryService.registerDiary(diaryRegistrationForm, multipartFile);
     }
 
     /**
@@ -52,11 +46,9 @@ public class DiaryController {
     @GetMapping("/")
     public List<DiaryResponseDto> getDiaries(@Validated DairySearchForm diarySearchForm) {
         if (StringUtils.isNotBlank(diarySearchForm.title())) {
-            return diaryService.convertToDiaryResponseDtoList(
-                    diaryService.getDiaries(diarySearchForm.title())
-            );
+            return diaryService.getDiaries(diarySearchForm.title());
         }
-        return diaryService.convertToDiaryResponseDtoList(diaryService.getAllDiaries());
+        return diaryService.getAllDiaries();
     }
 
     /**
@@ -67,7 +59,7 @@ public class DiaryController {
      */
     @GetMapping("/{id}")
     public DiaryResponseDto getDiary(@PathVariable("id") long id) {
-        return diaryService.convertToDiaryResponseDto(diaryService.getDiaryById(id));
+        return diaryService.getDiaryById(id);
     }
 
     /**
@@ -82,9 +74,7 @@ public class DiaryController {
             @PathVariable("id") long id,
             @Validated DiaryUpdateForm diaryUpdateForm,
             @RequestParam("diaryImage") MultipartFile multipartFile) {
-        return diaryService.convertToDiaryResponseDto(
-                diaryService.updateDiary(id, diaryUpdateForm, multipartFile)
-        );
+        return diaryService.updateDiary(id, diaryUpdateForm, multipartFile);
     }
 
     /**

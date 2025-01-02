@@ -1,5 +1,7 @@
 package com.genki.rest_api.diary.dto;
 
+import com.genki.rest_api.diary.entity.DiaryEntity;
+
 import java.time.LocalDateTime;
 
 /**
@@ -20,4 +22,20 @@ public record DiaryResponseDto(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
+    /**
+     * 日記エンティティをDTOに変換
+     *
+     * @param diaryEntity 日記エンティティ
+     * @return 日記レスポンスDTO
+     */
+    public static DiaryResponseDto of(DiaryEntity diaryEntity) {
+        return new DiaryResponseDto(
+                diaryEntity.getId(),
+                diaryEntity.getTitle(),
+                diaryEntity.getContent(),
+                diaryEntity.getImagePath(),
+                diaryEntity.getCreatedAt(),
+                diaryEntity.getUpdatedAt()
+        );
+    }
 }

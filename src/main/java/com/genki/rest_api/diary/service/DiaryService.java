@@ -5,6 +5,7 @@ import com.genki.rest_api.diary.entity.DiaryEntity;
 import com.genki.rest_api.diary.exception.DiaryIOException;
 import com.genki.rest_api.diary.exception.DiaryImageNotSupportedException;
 import com.genki.rest_api.diary.exception.DiaryNotFoundException;
+import com.genki.rest_api.diary.form.DiaryRegistrationForm;
 import com.genki.rest_api.diary.form.DiaryUpdateForm;
 import com.genki.rest_api.diary.repository.DiaryRepository;
 import io.micrometer.common.util.StringUtils;
@@ -37,87 +38,57 @@ public class DiaryService {
     private final List<String> EXTENSION_LIST = List.of("png", "jpg", "jpeg", "gif");
 
     /**
-     * 日記DTOを生成
-     *
-     * @param diaryEntity 日記エンティティ
-     * @return 日記DTO
-     */
-    public DiaryResponseDto convertToDiaryResponseDto(DiaryEntity diaryEntity) {
-        return new DiaryResponseDto(
-                diaryEntity.getId(),
-                diaryEntity.getTitle(),
-                diaryEntity.getContent(),
-                diaryEntity.getImagePath(),
-                diaryEntity.getCreatedAt(),
-                diaryEntity.getUpdatedAt()
-        );
-    }
-
-    /**
-     * 日記DTOリストを生成
-     *
-     * @param diaryEntityList 日記エンティティリスト
-     * @return 日記DTOリスト
-     */
-    public List<DiaryResponseDto> convertToDiaryResponseDtoList(List<DiaryEntity> diaryEntityList) {
-        return diaryEntityList.stream()
-                .map(this::convertToDiaryResponseDto)
-                .toList();
-    }
-
-    /**
      * 日記を全件取得
      *
-     * @return 日記エンティティ
+     * @return 日記レスポンスDTO
      */
-    public List<DiaryEntity> getAllDiaries() {
-        return diaryRepository.findAll();
+    public List<DiaryResponseDto> getAllDiaries() {
+        return diaryRepository.findAll()
+                .stream()
+                .map(DiaryResponseDto::of)
+                .toList();
     }
 
     /**
      * タイトルが入力に一致した日記を取得
      *
      * @param title 日記タイトル
-     * @return 日記エンティティリスト
+     * @return 日記レスポンスDTOリスト
      */
-    public List<DiaryEntity> getDiaries(String title) {
-        return diaryRepository.findByTitleContaining(title);
+    public List<DiaryResponseDto> getDiaries(String title) {
+        return diaryRepository.findByTitleContaining(title)
+                .stream()
+                .map(DiaryResponseDto::of)
+                .toList();
     }
 
     /**
      * 日記を登録
      *
-     * @param title   タイトル
-     * @param content 内容
-     * @return 日記エンティティ
+     * @param diaryRegistrationForm 日記登録フォーム
+     * @param multipartFile         画像ファイル
+     * @return 日記レスポンスDTO
      */
-    public DiaryEntity registerDiary(String title, String content, MultipartFile multipartFile) {
+    public DiaryResponseDto registerDiary(DiaryRegistrationForm diaryRegistrationForm, MultipartFile multipartFile) {
         DiaryEntity diaryEntity = new DiaryEntity();
-        diaryEntity.setTitle(title);
-        diaryEntity.setContent(content);
+        diaryEntity.setTitle(diaryRegistrationForm.title());
+        diaryEntity.setContent(diaryRegistrationForm.content());
         diaryRepository.save(diaryEntity);
 
         if (!multipartFile.isEmpty()) {
             saveDiaryImage(diaryEntity, multipartFile);
         }
-        return diaryEntity;
+        return DiaryResponseDto.of(diaryEntity);
     }
 
     /**
      * 日記を1件取得
      *
      * @param id ID
-     * @return 日記エンティティ
+     * @return 日記レスポンスDTO
      */
-    public DiaryEntity getDiaryById(long id) {
-        return diaryRepository.findById(id)
-                .orElseThrow(() -> new DiaryNotFoundException(
-                        messageSource.getMessage(
-                                "errors.api.diary.search.id.not.found",
-                                new Object[]{id},
-                                Locale.getDefault()
-                        )
-                ));
+    public DiaryResponseDto getDiaryById(long id) {
+        return DiaryResponseDto.of(getDiaryEntityById(id));
     }
 
     /**
@@ -125,10 +96,11 @@ public class DiaryService {
      *
      * @param id              ID
      * @param diaryUpdateForm 日記更新フォーム
-     * @return 日記エンティティ
+     * @param multipartFile   画像ファイル
+     * @return 日記レスポンスDTO
      */
-    public DiaryEntity updateDiary(long id, DiaryUpdateForm diaryUpdateForm, MultipartFile multipartFile) {
-        DiaryEntity diaryEntity = getDiaryById(id);
+    public DiaryResponseDto updateDiary(long id, DiaryUpdateForm diaryUpdateForm, MultipartFile multipartFile) {
+        DiaryEntity diaryEntity = getDiaryEntityById(id);
 
         updateIfNotBlank(diaryUpdateForm.title(), diaryEntity::setTitle);
         updateIfNotBlank(diaryUpdateForm.content(), diaryEntity::setContent);
@@ -136,7 +108,25 @@ public class DiaryService {
         if (!multipartFile.isEmpty()) {
             saveDiaryImage(diaryEntity, multipartFile);
         }
-        return diaryRepository.save(diaryEntity);
+        return DiaryResponseDto.of(diaryRepository.save(diaryEntity));
+    }
+
+    /**
+     * 日記エンティティを1件取得
+     *
+     * @param id ID
+     * @return 日記エンティティ
+     */
+    private DiaryEntity getDiaryEntityById(long id) {
+        return diaryRepository.findById(id)
+                .orElseThrow(() -> new DiaryNotFoundException(
+                                messageSource.getMessage(
+                                        "errors.api.diary.search.id.not.found",
+                                        new Object[]{id},
+                                        Locale.getDefault()
+                                )
+                        )
+                );
     }
 
     /**
@@ -174,7 +164,8 @@ public class DiaryService {
                             "errors.api.diary.image.file.is.blank",
                             null,
                             Locale.getDefault()
-                    ), e);
+                    ),
+                    e);
         }
     }
 
