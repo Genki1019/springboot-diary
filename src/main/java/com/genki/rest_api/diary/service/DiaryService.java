@@ -13,6 +13,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.context.MessageSource;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -189,7 +190,7 @@ public class DiaryService {
     }
 
     /**
-     * 日記画像のファイルパスを呪録
+     * 日記画像のファイルパスを取得
      *
      * @param id       ID
      * @param fileName 画像ファイル名
@@ -285,5 +286,73 @@ public class DiaryService {
         }
         String extension = FilenameUtils.getExtension(originalImageFileName).toLowerCase();
         return EXTENSION_LIST.contains(extension);
+    }
+
+    /**
+     * 日記画像を取得
+     *
+     * @param id ID
+     * @return 日記画像パス
+     */
+    public Path getImagePathById(long id) {
+        String imageFileName = getDiaryEntityById(id).getImagePath();
+        if (StringUtils.isBlank(imageFileName)) {
+            throw new DiaryNotFoundException(
+                    messageSource.getMessage(
+                            "errors.api.diary.search.image.not.found",
+                            new Object[]{id},
+                            Locale.getDefault()
+                    )
+            );
+        }
+        return getDiaryImageFilePath(id, imageFileName);
+    }
+
+    /**
+     * 日記画像をbyte配列で取得
+     *
+     * @param imageFilePath 画像ファイルパス
+     * @return 日記画像のbyte配列
+     */
+    public byte[] readImageAsBytes(Path imageFilePath, long id) {
+        try {
+            return Files.readAllBytes(imageFilePath);
+        } catch (IOException e) {
+            throw new DiaryNotFoundException(
+                    messageSource.getMessage(
+                            "errors.api.diary.search.image.not.found",
+                            new Object[]{id},
+                            Locale.getDefault()
+                    ),
+                    e);
+        }
+    }
+
+    /**
+     * ファイル名からMIMEタイプを取得
+     *
+     * @param fileName ファイル名
+     * @return MIMEタイプ
+     */
+    public MediaType getMediaType(String fileName) {
+        String extension = FilenameUtils.getExtension(fileName).toLowerCase();
+        switch (extension) {
+            case "jpeg", "jpg" -> {
+                return MediaType.IMAGE_JPEG;
+            }
+            case "png" -> {
+                return MediaType.IMAGE_PNG;
+            }
+            case "gif" -> {
+                return MediaType.IMAGE_GIF;
+            }
+            default -> throw new DiaryImageNotSupportedException(
+                    messageSource.getMessage(
+                            "errors.api.diary.image.extension.not.supported",
+                            new Object[]{EXTENSION_LIST},
+                            Locale.getDefault()
+                    )
+            );
+        }
     }
 }

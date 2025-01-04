@@ -7,11 +7,15 @@ import com.genki.rest_api.diary.form.DiaryUpdateForm;
 import com.genki.rest_api.diary.service.DiaryService;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -22,7 +26,6 @@ import java.util.List;
 @RequestMapping("/diary")
 public class DiaryController {
     private final DiaryService diaryService;
-
 
     /**
      * 日記登録API
@@ -60,6 +63,24 @@ public class DiaryController {
     @GetMapping("/{id}")
     public DiaryResponseDto getDiary(@PathVariable("id") long id) {
         return diaryService.getDiaryById(id);
+    }
+
+    /**
+     * 日記画像取得API
+     *
+     * @param id ID
+     * @return 日記画像
+     */
+    @GetMapping("{id}/image")
+    public ResponseEntity<byte[]> getDiaryImage(@PathVariable("id") long id) {
+        Path diaryImagePath = diaryService.getImagePathById(id);
+        byte[] diaryByteImage = diaryService.readImageAsBytes(diaryImagePath, id);
+        MediaType contentType = diaryService.getMediaType(diaryImagePath.getFileName().toString());
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(contentType);
+        httpHeaders.setContentLength(diaryByteImage.length);
+        return new ResponseEntity<>(diaryByteImage, httpHeaders, HttpStatus.OK);
     }
 
     /**
