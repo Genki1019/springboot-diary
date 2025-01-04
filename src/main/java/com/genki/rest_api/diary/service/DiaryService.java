@@ -15,6 +15,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.springframework.context.MessageSource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.FileSystemUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -148,7 +149,28 @@ public class DiaryService {
      * @param id ID
      */
     public void deleteDiary(long id) {
+        Path diaryImageFilePath = getDiaryImageIdDirPath(id);
         diaryRepository.deleteById(id);
+        deleteImageDir(diaryImageFilePath);
+    }
+
+    /**
+     * ファイルを上位のディレクトリまで再帰的に削除
+     *
+     * @param filePath ファイルパス
+     */
+    private void deleteImageDir(Path filePath) {
+        try {
+            FileSystemUtils.deleteRecursively(filePath);
+        } catch (IOException e) {
+            throw new DiaryIOException(
+                    messageSource.getMessage(
+                            "errors.api.diary.image.file.is.blank",
+                            null,
+                            Locale.getDefault()
+                    ),
+                    e);
+        }
     }
 
     /**
